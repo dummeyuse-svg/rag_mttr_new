@@ -5,3 +5,32 @@ Add this above textarea:
 <select id="machine-dropdown"></select>
 
 <input type="text" id="line-input" placeholder="Enter line (FMD21)">
+
+
+js logic 
+let machinesList = [];
+
+async function loadMachines() {
+  const r = await fetch('/machines');
+  const d = await r.json();
+  machinesList = d.machines;
+  updateDropdown(machinesList);
+}
+
+function updateDropdown(list) {
+  const dropdown = document.getElementById('machine-dropdown');
+  dropdown.innerHTML = list.map(m => `<option value="${m}">${m}</option>`).join('');
+}
+
+document.getElementById('machine-search').addEventListener('input', (e) => {
+  const val = e.target.value.toLowerCase();
+  const filtered = machinesList.filter(m => m.toLowerCase().includes(val));
+  updateDropdown(filtered);
+});
+
+update api call
+body: JSON.stringify({
+  query,
+  machine_filter: document.getElementById('machine-dropdown').value,
+  line_number: document.getElementById('line-input').value
+})
