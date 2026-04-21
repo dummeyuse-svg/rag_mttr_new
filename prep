@@ -17,3 +17,7 @@ Then run:
 python clean_excel.py --file "MTDR Records.xlsx"
 
 ✔ Works directly
+
+
+
+pip install fastapi uvicorn pandas openpyxl chromadb sentence-transformers httpx
