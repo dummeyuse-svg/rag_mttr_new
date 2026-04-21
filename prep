@@ -21,3 +21,20 @@ python clean_excel.py --file "MTDR Records.xlsx"
 
 
 pip install fastapi uvicorn pandas openpyxl chromadb sentence-transformers httpx
+
+
+📍 Correct setup order (very important)
+Step 1 — Install Ollama
+
+(download from official site)
+
+Step 2 — Pull the model (THIS STEP 👇)
+ollama pull llama3
+
+👉 This downloads the AI model locally
+👉 Size ~4–8 GB (depends on version)
+
+Step 3 — Prepare your data
+python clean_excel.py --file "MTDR Records.xlsx"
+Step 4 — Start your system
+start.bat
