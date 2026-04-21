@@ -34,3 +34,44 @@ body: JSON.stringify({
   machine_filter: document.getElementById('machine-dropdown').value,
   line_number: document.getElementById('line-input').value
 })
+
+
+
+newwwwww
+<script>
+function renderResults(query, data) {
+  const { ai_suggestion, ranked_solutions, matched_records } = data;
+
+  const rankedHTML = ranked_solutions.map((r, i) => `
+    <div class="record">
+      <strong>#${i+1}</strong> ${esc(r.solution)}
+      <div class="record-label">Used ${r.count} times</div>
+    </div>
+  `).join('');
+
+  const recordsHTML = matched_records.map((rec, i) => `
+    <div class="record">
+      <div><b>Machine:</b> ${esc(rec.machine)}</div>
+      <div><b>Problem:</b> ${esc(rec.problem)}</div>
+      <div><b>Solution:</b> ${esc(rec.solution)}</div>
+    </div>
+  `).join('');
+
+  document.getElementById('results').innerHTML = `
+    <div class="result-card">
+      <div class="result-header">AI Suggestion</div>
+      <div class="ai-body">${esc(ai_suggestion)}</div>
+    </div>
+
+    <div class="result-card" style="margin-top:16px">
+      <div class="result-header">Top Solutions (Most Used)</div>
+      <div class="records-section">${rankedHTML}</div>
+    </div>
+
+    <div class="result-card" style="margin-top:16px">
+      <div class="result-header">Matched Records</div>
+      <div class="records-section">${recordsHTML}</div>
+    </div>
+  `;
+}
+</script>
