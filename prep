@@ -3,3 +3,17 @@ python clean_excel.py --file "MTDR Records.xlsx"
 
 # Step 2 (Daily use)
 uvicorn app:app --host 127.0.0.1 --port 8000
+
+1. File is in same folder (simplest)
+
+If your structure is:
+
+project/
+├── clean_excel.py
+├── MTDR Records.xlsx
+
+Then run:
+
+python clean_excel.py --file "MTDR Records.xlsx"
+
+✔ Works directly
