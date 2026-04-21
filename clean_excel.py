@@ -1,9 +1,17 @@
+"""
+clean_excel.py
+--------------
+Run once to clean MTDR Excel and index into ChromaDB
+Usage: python clean_excel.py --file "MTDR Records.xlsx"
+"""
+
 import argparse
 import re
 import pandas as pd
 import chromadb
 from chromadb.utils import embedding_functions
 
+# Config
 COLLECTION_NAME = "mtdr_records"
 DB_PATH = "./chroma_db"
 EMBED_MODEL = "all-MiniLM-L6-v2"
@@ -11,8 +19,7 @@ EMBED_MODEL = "all-MiniLM-L6-v2"
 COL_MACHINE  = ["machine", "machine name", "equipment", "asset"]
 COL_PROBLEM  = ["problem", "issue", "fault", "description", "breakdown"]
 COL_SOLUTION = ["solution", "action taken", "fix", "resolution", "remedy"]
-COL_CATEGORY = ["category", "type", "issue type"]
-
+COL_LINE     = ["line", "line no", "production line", "line name"]
 
 def find_col(df_cols, aliases):
     lower_cols = {c.lower().strip(): c for c in df_cols}
@@ -21,15 +28,12 @@ def find_col(df_cols, aliases):
             return lower_cols[alias]
     return None
 
-
 def clean_text(val):
     if pd.isna(val):
         return ""
     text = str(val).strip()
     text = re.sub(r"\s+", " ", text)
-    text = re.sub(r"[^\x20-\x7E\u0900-\u097F]", "", text)
-    return text.strip()
-
+    return text
 
 def load_and_clean(filepath):
     df = pd.read_excel(filepath, engine="openpyxl")
@@ -38,13 +42,16 @@ def load_and_clean(filepath):
     machine_col  = find_col(df.columns, COL_MACHINE)
     problem_col  = find_col(df.columns, COL_PROBLEM)
     solution_col = find_col(df.columns, COL_SOLUTION)
-    category_col = find_col(df.columns, COL_CATEGORY)
+    line_col     = find_col(df.columns, COL_LINE)
+
+    if not all([machine_col, problem_col, solution_col]):
+        raise ValueError("Missing required columns")
 
     cleaned = pd.DataFrame({
-        "machine":  df[machine_col].apply(clean_text),
-        "problem":  df[problem_col].apply(clean_text),
+        "machine": df[machine_col].apply(clean_text),
+        "line": df[line_col].apply(clean_text) if line_col else "",
+        "problem": df[problem_col].apply(clean_text),
         "solution": df[solution_col].apply(clean_text),
-        "category": df[category_col].apply(clean_text) if category_col else ""
     })
 
     cleaned = cleaned[
@@ -53,7 +60,6 @@ def load_and_clean(filepath):
     ].drop_duplicates()
 
     return cleaned.reset_index(drop=True)
-
 
 def index_to_chromadb(df):
     client = chromadb.PersistentClient(path=DB_PATH)
@@ -72,26 +78,29 @@ def index_to_chromadb(df):
         embedding_function=ef
     )
 
-    documents, metadatas, ids = [], [], []
+    docs, metas, ids = [], [], []
 
     for i, row in df.iterrows():
-        documents.append(f"Machine: {row['machine']}. Problem: {row['problem']}")
-        metadatas.append({
+        docs.append(f"Machine: {row['machine']} Line: {row['line']} Problem: {row['problem']}")
+        metas.append({
             "machine": row["machine"],
+            "line": row["line"],
             "problem": row["problem"],
-            "solution": row["solution"],
-            "category": row["category"]
+            "solution": row["solution"]
         })
         ids.append(f"id_{i}")
 
-    collection.add(documents=documents, metadatas=metadatas, ids=ids)
-    print(f"Indexed {len(documents)} records")
+    collection.add(documents=docs, metadatas=metas, ids=ids)
 
-
-if __name__ == "__main__":
+def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--file", required=True)
     args = parser.parse_args()
 
     df = load_and_clean(args.file)
     index_to_chromadb(df)
+
+    print("✅ Data indexed successfully")
+
+if __name__ == "__main__":
+    main()
