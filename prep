@@ -1,0 +1,5 @@
+# Step 1 (ONLY ONCE)
+python clean_excel.py --file "MTDR Records.xlsx"
+
+# Step 2 (Daily use)
+uvicorn app:app --host 127.0.0.1 --port 8000
