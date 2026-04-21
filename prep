@@ -38,3 +38,23 @@ Step 3 — Prepare your data
 python clean_excel.py --file "MTDR Records.xlsx"
 Step 4 — Start your system
 start.bat
+
+
+MTDR_AI/
+├── app.py
+├── clean_excel.py
+├── index.html
+├── start.bat
+└── data/
+    └── MTDR Records.xlsx
+
+
+Start your system (EVERY TIME YOU USE)
+
+This uses:
+
+👉 start.bat
+
+Just double-click OR run:
+
+start.bat
