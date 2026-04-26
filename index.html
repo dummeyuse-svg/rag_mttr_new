@@ -1,77 +1,479 @@
-Only showing important modified parts (rest remains same)
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>MTDR AI Assistant</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-Add this above textarea:
-<input type="text" id="machine-search" placeholder="Search machine...">
-<select id="machine-dropdown"></select>
+    :root {
+      --bg: #0f1117;
+      --bg2: #1a1d27;
+      --bg3: #22263a;
+      --border: #2e3348;
+      --accent: #4f8ef7;
+      --accent2: #3ecf8e;
+      --text: #e8eaf0;
+      --muted: #7a819a;
+      --danger: #f97070;
+      --warn: #f0b040;
+      --radius: 10px;
+      --font: 'Segoe UI', system-ui, sans-serif;
+    }
 
-<input type="text" id="line-input" placeholder="Enter line (FMD21)">
+    body {
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
 
+    /* ── Header ── */
+    header {
+      background: var(--bg2);
+      border-bottom: 1px solid var(--border);
+      padding: 14px 28px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+    .logo {
+      width: 38px; height: 38px;
+      background: var(--accent);
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 700; font-size: 18px; color: #fff;
+      flex-shrink: 0;
+    }
+    header h1 { font-size: 18px; font-weight: 600; }
+    header p  { font-size: 12px; color: var(--muted); }
+    .status-pill {
+      margin-left: auto;
+      display: flex; align-items: center; gap: 6px;
+      font-size: 12px; color: var(--muted);
+      background: var(--bg3); border: 1px solid var(--border);
+      padding: 5px 12px; border-radius: 20px;
+    }
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
+    .dot.ok  { background: var(--accent2); }
+    .dot.err { background: var(--danger); }
 
-js logic 
-let machinesList = [];
+    /* ── Layout ── */
+    main {
+      display: flex;
+      flex: 1;
+      gap: 0;
+    }
+    .sidebar {
+      width: 220px;
+      flex-shrink: 0;
+      background: var(--bg2);
+      border-right: 1px solid var(--border);
+      padding: 20px 16px;
+      display: flex; flex-direction: column; gap: 10px;
+    }
+    .sidebar h3 { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin-bottom: 4px; }
+    .machine-btn {
+      background: transparent; border: 1px solid var(--border);
+      color: var(--text); border-radius: 6px;
+      padding: 7px 10px; text-align: left; cursor: pointer;
+      font-size: 13px; transition: background .15s, border-color .15s;
+    }
+    .machine-btn:hover  { background: var(--bg3); }
+    .machine-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+    .machine-btn.all    { color: var(--muted); }
 
-async function loadMachines() {
-  const r = await fetch('/machines');
-  const d = await r.json();
-  machinesList = d.machines;
-  updateDropdown(machinesList);
-}
+    .workspace {
+      flex: 1;
+      display: flex; flex-direction: column;
+      padding: 24px 28px;
+      gap: 20px;
+      max-width: 900px;
+    }
 
-function updateDropdown(list) {
-  const dropdown = document.getElementById('machine-dropdown');
-  dropdown.innerHTML = list.map(m => `<option value="${m}">${m}</option>`).join('');
-}
+    /* ── Query card ── */
+    .query-card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+    }
+    .query-card label { font-size: 13px; color: var(--muted); display: block; margin-bottom: 8px; }
+    .query-row { display: flex; gap: 10px; align-items: flex-end; }
+    textarea {
+      flex: 1;
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-family: var(--font);
+      font-size: 15px;
+      padding: 12px 14px;
+      resize: vertical;
+      min-height: 68px;
+      outline: none;
+      transition: border-color .15s;
+    }
+    textarea:focus { border-color: var(--accent); }
+    textarea::placeholder { color: var(--muted); }
 
-document.getElementById('machine-search').addEventListener('input', (e) => {
-  const val = e.target.value.toLowerCase();
-  const filtered = machinesList.filter(m => m.toLowerCase().includes(val));
-  updateDropdown(filtered);
-});
+    .btn {
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 12px 22px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity .15s;
+      white-space: nowrap;
+    }
+    .btn:hover:not(:disabled) { opacity: .85; }
+    .btn:disabled { opacity: .4; cursor: not-allowed; }
+    .btn.mic { background: var(--bg3); border: 1px solid var(--border); font-size: 18px; padding: 12px 14px; }
+    .btn.mic.recording { background: var(--danger); border-color: var(--danger); animation: pulse .7s ease-in-out infinite; }
 
-update api call
-body: JSON.stringify({
-  query,
-  machine_filter: document.getElementById('machine-dropdown').value,
-  line_number: document.getElementById('line-input').value
-})
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.6} }
 
+    .machine-tag {
+      font-size: 12px; color: var(--muted);
+      margin-top: 8px;
+    }
+    .machine-tag span { color: var(--accent); font-weight: 500; }
 
+    /* ── Results ── */
+    .result-card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+    .result-header {
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; gap: 10px;
+      font-weight: 600; font-size: 14px;
+    }
+    .tag {
+      font-size: 11px; font-weight: 600;
+      padding: 2px 8px; border-radius: 20px;
+      background: var(--accent); color: #fff;
+    }
+    .tag.green { background: var(--accent2); color: #0f1117; }
 
-newwwwww
+    .ai-body {
+      padding: 18px;
+      font-size: 15px;
+      line-height: 1.7;
+      white-space: pre-wrap;
+      color: var(--text);
+    }
+
+    /* ── Matched records ── */
+    .records-section { padding: 18px; display: flex; flex-direction: column; gap: 12px; }
+    .record {
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 14px 16px;
+    }
+    .record-top { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
+    .machine-badge {
+      background: var(--bg2); border: 1px solid var(--border);
+      border-radius: 4px; padding: 2px 8px;
+      font-size: 11px; color: var(--muted);
+    }
+    .sim-bar-wrap { display: flex; align-items: center; gap: 6px; margin-left: auto; }
+    .sim-bar { height: 4px; border-radius: 2px; background: var(--border); width: 80px; }
+    .sim-fill { height: 100%; border-radius: 2px; background: var(--accent2); transition: width .3s; }
+    .sim-pct { font-size: 11px; color: var(--muted); width: 36px; text-align: right; }
+
+    .record-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 2px; }
+    .record-text  { font-size: 13px; color: var(--text); line-height: 1.55; }
+    .record-row   { margin-bottom: 8px; }
+    .record-row:last-child { margin-bottom: 0; }
+
+    /* ── Loading ── */
+    .loading {
+      display: flex; align-items: center; gap: 10px;
+      padding: 18px;
+      font-size: 14px; color: var(--muted);
+    }
+    .spinner {
+      width: 18px; height: 18px;
+      border: 2px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin .6s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .error-box {
+      background: #2a1a1a; border: 1px solid var(--danger);
+      border-radius: 8px; padding: 14px 16px;
+      font-size: 13px; color: var(--danger);
+    }
+
+    .empty { color: var(--muted); font-size: 14px; padding: 18px; }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">M</div>
+  <div>
+    <h1>MTTR AI Assistant</h1>
+    <p>Local AI · Offline · Secure</p>
+  </div>
+  <div class="status-pill">
+    <div class="dot" id="status-dot"></div>
+    <span id="status-text">Checking...</span>
+  </div>
+</header>
+
+<main>
+  <!-- Sidebar: machine filter -->
+  <aside class="sidebar">
+    <h3>Filter by machine</h3>
+    <button class="machine-btn all active" onclick="selectMachine(null, this)">All machines</button>
+    <div id="machine-list"></div>
+  </aside>
+
+  <!-- Main workspace -->
+  <div class="workspace">
+
+    <!-- Query input -->
+    <div class="query-card">
+      <label for="query-input">Describe the problem you are facing:</label>
+      <div class="query-row">
+        <textarea
+          id="query-input"
+          placeholder="e.g. Motor is overheating and trips after 10 minutes of operation..."
+          rows="3"
+        ></textarea>
+        <button class="btn mic" id="mic-btn" title="Voice input" onclick="toggleMic()">🎤</button>
+        <button class="btn" id="submit-btn" onclick="submitQuery()">Search →</button>
+      </div>
+      <div class="machine-tag" id="machine-tag" style="display:none">
+        Searching in machine: <span id="machine-tag-name"></span>
+      </div>
+    </div>
+
+    <!-- Results -->
+    <div id="results"></div>
+
+  </div>
+</main>
+
 <script>
-function renderResults(query, data) {
-  const { ai_suggestion, ranked_solutions, matched_records } = data;
+  let selectedMachine = null;
+  let recognition = null;
+  let isRecording = false;
 
-  const rankedHTML = ranked_solutions.map((r, i) => `
-    <div class="record">
-      <strong>#${i+1}</strong> ${esc(r.solution)}
-      <div class="record-label">Used ${r.count} times</div>
-    </div>
-  `).join('');
+  // ── Status check ─────────────────────────────────────────────────────────
+  async function checkStatus() {
+    try {
+      const r = await fetch('/health');
+      const d = await r.json();
+      const dot  = document.getElementById('status-dot');
+      const text = document.getElementById('status-text');
+      if (d.records_indexed > 0 && d.ollama_running) {
+        dot.className = 'dot ok';
+        text.textContent = `${d.records_indexed} records · LLM ready`;
+      } else if (d.records_indexed === 0) {
+        dot.className = 'dot err';
+        text.textContent = 'No records — run clean_excel.py';
+      } else {
+        dot.className = 'dot err';
+        text.textContent = 'Ollama not running';
+      }
+    } catch {
+      document.getElementById('status-dot').className = 'dot err';
+      document.getElementById('status-text').textContent = 'Server error';
+    }
+  }
 
-  const recordsHTML = matched_records.map((rec, i) => `
-    <div class="record">
-      <div><b>Machine:</b> ${esc(rec.machine)}</div>
-      <div><b>Problem:</b> ${esc(rec.problem)}</div>
-      <div><b>Solution:</b> ${esc(rec.solution)}</div>
-    </div>
-  `).join('');
+  // ── Load machines ─────────────────────────────────────────────────────────
+  async function loadMachines() {
+    try {
+      const r = await fetch('/machines');
+      const d = await r.json();
+      const list = document.getElementById('machine-list');
+      list.innerHTML = '';
+      for (const m of d.machines) {
+        const btn = document.createElement('button');
+        btn.className = 'machine-btn';
+        btn.textContent = m;
+        btn.onclick = () => selectMachine(m, btn);
+        list.appendChild(btn);
+      }
+    } catch { /* ignore */ }
+  }
 
-  document.getElementById('results').innerHTML = `
-    <div class="result-card">
-      <div class="result-header">AI Suggestion</div>
-      <div class="ai-body">${esc(ai_suggestion)}</div>
-    </div>
+  function selectMachine(machine, btn) {
+    selectedMachine = machine;
+    document.querySelectorAll('.machine-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    const tag = document.getElementById('machine-tag');
+    if (machine) {
+      tag.style.display = 'block';
+      document.getElementById('machine-tag-name').textContent = machine;
+    } else {
+      tag.style.display = 'none';
+    }
+  }
 
-    <div class="result-card" style="margin-top:16px">
-      <div class="result-header">Top Solutions (Most Used)</div>
-      <div class="records-section">${rankedHTML}</div>
-    </div>
+  // ── Submit query ──────────────────────────────────────────────────────────
+  async function submitQuery() {
+    const query = document.getElementById('query-input').value.trim();
+    if (!query) return;
 
-    <div class="result-card" style="margin-top:16px">
-      <div class="result-header">Matched Records</div>
-      <div class="records-section">${recordsHTML}</div>
-    </div>
-  `;
-}
+    const btn  = document.getElementById('submit-btn');
+    const box  = document.getElementById('results');
+    btn.disabled = true;
+
+    box.innerHTML = `
+      <div class="result-card">
+        <div class="loading">
+          <div class="spinner"></div>
+          Searching records and generating suggestion...
+        </div>
+      </div>`;
+
+    try {
+      const r = await fetch('/query', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query, machine_filter: selectedMachine }),
+      });
+
+      if (!r.ok) {
+        const err = await r.json();
+        showError(err.detail || 'Unknown error');
+        return;
+      }
+
+      const data = await r.json();
+      renderResults(query, data);
+    } catch (e) {
+      showError('Could not reach the server. Is app.py running?');
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  function showError(msg) {
+    document.getElementById('results').innerHTML =
+      `<div class="error-box">⚠ ${msg}</div>`;
+  }
+
+  function renderResults(query, data) {
+    const { ai_suggestion, matched_records } = data;
+
+    const recHTML = matched_records.map((rec, i) => {
+      const pct = Math.round(rec.similarity * 100);
+      return `
+        <div class="record">
+          <div class="record-top">
+            <strong style="font-size:13px">#${i+1}</strong>
+            <div class="machine-badge">${esc(rec.machine)}</div>
+            <div class="sim-bar-wrap">
+              <div class="sim-bar"><div class="sim-fill" style="width:${pct}%"></div></div>
+              <div class="sim-pct">${pct}%</div>
+            </div>
+          </div>
+          <div class="record-row">
+            <div class="record-label">Problem</div>
+            <div class="record-text">${esc(rec.problem)}</div>
+          </div>
+          <div class="record-row">
+            <div class="record-label">Solution</div>
+            <div class="record-text">${esc(rec.solution)}</div>
+          </div>
+        </div>`;
+    }).join('');
+
+    document.getElementById('results').innerHTML = `
+      <div class="result-card">
+        <div class="result-header">
+          <span class="tag green">AI Suggestion</span>
+          AI-recommended solution
+        </div>
+        <div class="ai-body">${esc(ai_suggestion)}</div>
+      </div>
+
+      <div class="result-card" style="margin-top:16px">
+        <div class="result-header">
+          <span class="tag">Past Records</span>
+          ${matched_records.length} most similar MTDR records
+        </div>
+        <div class="records-section">${recHTML || '<div class="empty">No matching records found.</div>'}</div>
+      </div>`;
+  }
+
+  function esc(str) {
+    return String(str ?? '')
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+      .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  // ── Voice input ───────────────────────────────────────────────────────────
+  function toggleMic() {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      alert('Voice input is not supported in this browser. Use Chrome.');
+      return;
+    }
+
+    const micBtn = document.getElementById('mic-btn');
+
+    if (isRecording && recognition) {
+      recognition.stop();
+      return;
+    }
+
+    recognition = new SpeechRecognition();
+    recognition.lang = 'en-IN';      // Change to 'hi-IN' for Hindi if needed
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 1;
+
+    recognition.onstart = () => {
+      isRecording = true;
+      micBtn.classList.add('recording');
+      micBtn.textContent = '⏹';
+    };
+
+    recognition.onresult = (event) => {
+      const transcript = event.results[0][0].transcript;
+      const input = document.getElementById('query-input');
+      input.value = (input.value ? input.value + ' ' : '') + transcript;
+    };
+
+    recognition.onerror = (event) => {
+      console.error('Speech recognition error:', event.error);
+    };
+
+    recognition.onend = () => {
+      isRecording = false;
+      micBtn.classList.remove('recording');
+      micBtn.textContent = '🎤';
+    };
+
+    recognition.start();
+  }
+
+  // ── Keyboard shortcut: Ctrl+Enter to submit ───────────────────────────────
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) submitQuery();
+  });
+
+  // ── Init ──────────────────────────────────────────────────────────────────
+  checkStatus();
+  loadMachines();
 </script>
+</body>
+</html>
