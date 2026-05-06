@@ -102,3 +102,29 @@ async function translateText(lang) {
 important optional
 adding a prompt
 If the user asks about a step in a solution, explain it clearly.
+
+
+
+
+
+
+✅ What you will do (end-to-end)
+📦 1. Transfer your zip
+
+Move your project zip to your work laptop and extract it:
+
+project/
+🧱 2. Open terminal inside that folder
+cd path\to\project
+🔧 3. Create virtual environment
+python -m venv venv
+▶️ 4. Activate it
+venv\Scripts\activate
+🔍 5. Confirm version
+python --version
+
+👉 Must be:
+
+Python 3.11.x ✅
+📥 6. Install dependencies (OFFLINE)
+pip install --no-index --find-links=offline_packages -r requirements-lock.txt
