@@ -128,3 +128,20 @@ python --version
 Python 3.11.x ✅
 📥 6. Install dependencies (OFFLINE)
 pip install --no-index --find-links=offline_packages -r requirements-lock.txt
+
+
+
+def load_and_clean(filepath: str) -> pd.DataFrame:
+    print(f"[1/3] Reading CSV: {filepath}")
+
+    df = pd.read_csv(filepath)
+
+    df.columns = df.columns.str.strip()
+
+    required = [COL_SMD_LINE, COL_MACHINE, COL_PROBLEM, COL_SOLUTION]
+
+    for col in required:
+        if col not in df.columns:
+            raise ValueError(
+                f"Missing column: '{col}'\nAvailable: {list(df.columns)}"
+            )
